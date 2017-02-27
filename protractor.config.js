@@ -27,7 +27,7 @@ exports.config = {
   framework: 'jasmine',
 
   // Spec patterns are relative to this config file
-  specs: ['**/*e2e-spec.js' ],
+  specs: ['**/*e2e-spec.js'],
 
 
   // For angular tests
@@ -36,21 +36,85 @@ exports.config = {
   // Base URL for application server
   baseUrl: 'http://localhost:8080',
 
+  plugins: [
+    {
+      package: 'protractor-console-plugin',
+      failOnWarning: false,
+      failOnError: true,
+      logWarnings: true
+    },
+    {
+      package: 'protractor-timeline-plugin',
+      // Output json and html will go in this folder.
+      outdir: 'e2e-test-results/timelines',
+      // Set the name of the html file. Defaults to index.html.
+      outputHtmlFileName: 'results.html'
+    },
+    //Not working
+    /*{
+      package: 'protractor-ng-hint-plugin',
+      asTests: false
+    },*/
+    {
+      chromeA11YDevTools: {
+        treatWarningsAsFailures: false,
+        auditConfiguration: {
+          auditRulesToRun: [
+            //Not working
+            /*'audioWithoutControls',
+             'badAriaAttributeValue',
+             'badAriaRole',
+             'controlsWithoutLabel',
+             'elementsWithMeaningfulBackgroundImage',
+             'focusableElementNotVisibleAndNotAriaHidden',
+             'imagesWithoutAltText',
+             'linkWithUnclearPurpose',
+             'lowContrastElements',
+             'mainRoleOnInappropriateElement',
+             'nonExistentAriaLabelledbyElement',
+             'pageWithoutTitle',
+             'requiredAriaAttributeMissing',
+             'unfocusableElementsWithOnClick',
+             'videoWithoutCaptions'*/
+          ],
+          auditRulesToSkip: []
+        }
+      },
+      package: 'protractor-accessibility-plugin'
+    }
+  ],
+
   // doesn't seem to work.
   // resultJsonOutputFile: "foo.json",
 
-  onPrepare: function() {
+  onPrepare: function () {
+
+    var Jasmine2HtmlReporter = require('protractor-jasmine2-html-reporter');
+    var SpecReporter = require('jasmine-spec-reporter').SpecReporter;
+
     //// SpecReporter
-    //var SpecReporter = require('jasmine-spec-reporter');
-    //jasmine.getEnv().addReporter(new SpecReporter({displayStacktrace: 'none'}));
-    //// jasmine.getEnv().addReporter(new SpecReporter({displayStacktrace: 'all'}));
+    require('protractor/built/logger').Logger.logLevel = 1;
+    jasmine.getEnv().addReporter(new SpecReporter({
+      spec: {
+        displayStacktrace: true
+      },
+      summary: {
+        displayDuration: false
+      }
+    }));
 
     // debugging
     // console.log('browser.params:' + JSON.stringify(browser.params));
-    jasmine.getEnv().addReporter(new Reporter( browser.params )) ;
+    jasmine.getEnv().addReporter(new Reporter(browser.params));
+
+    jasmine.getEnv().addReporter(
+      new Jasmine2HtmlReporter({
+        savePath: 'e2e-test-results/target/screenshots'
+      })
+    );
 
     // Allow changing bootstrap mode to NG1 for upgrade tests
-    global.setProtractorToNg1Mode = function() {
+    global.setProtractorToNg1Mode = function () {
       browser.useAllAngular2AppRoots = false;
       browser.rootEl = 'body';
     };
@@ -60,7 +124,8 @@ exports.config = {
     // defaultTimeoutInterval: 60000,
     defaultTimeoutInterval: 10000,
     showTiming: true,
-    print: function() {}
+    print: function () {
+    }
   }
 };
 
@@ -70,19 +135,19 @@ function Reporter(options) {
   options.outputFile = options.outputFile || _defaultOutputFile;
 
   initOutputFile(options.outputFile);
-  options.appDir = options.appDir ||  './';
+  options.appDir = options.appDir || './';
   var _root = { appDir: options.appDir, suites: [] };
   log('AppDir: ' + options.appDir, +1);
   var _currentSuite;
 
-  this.suiteStarted = function(suite) {
+  this.suiteStarted = function (suite) {
     _currentSuite = { description: suite.description, status: null, specs: [] };
     _root.suites.push(_currentSuite);
     log('Suite: ' + suite.description, +1);
   };
 
-  this.suiteDone = function(suite) {
-    var statuses = _currentSuite.specs.map(function(spec) {
+  this.suiteDone = function (suite) {
+    var statuses = _currentSuite.specs.map(function (spec) {
       return spec.status;
     });
     statuses = _.uniq(statuses);
@@ -91,11 +156,11 @@ function Reporter(options) {
     log('Suite ' + _currentSuite.status + ': ' + suite.description, -1);
   };
 
-  this.specStarted = function(spec) {
+  this.specStarted = function (spec) {
 
   };
 
-  this.specDone = function(spec) {
+  this.specDone = function (spec) {
     var currentSpec = {
       description: spec.description,
       status: spec.status
@@ -108,7 +173,7 @@ function Reporter(options) {
     log(spec.status + ' - ' + spec.description);
   };
 
-  this.jasmineDone = function() {
+  this.jasmineDone = function () {
     outputFile = options.outputFile;
     //// Alternate approach - just stringify the _root - not as pretty
     //// but might be more useful for automation.
@@ -147,17 +212,17 @@ function Reporter(options) {
     var pad = '  ';
     var results = [];
     results.push('AppDir:' + output.appDir);
-    output.suites.forEach(function(suite) {
+    output.suites.forEach(function (suite) {
       results.push(pad + 'Suite: ' + suite.description + ' -- ' + suite.status);
-      pad+=indent;
-      suite.specs.forEach(function(spec) {
+      pad += indent;
+      suite.specs.forEach(function (spec) {
         results.push(pad + spec.status + ' - ' + spec.description);
         if (spec.failedExpectations) {
-          pad+=indent;
+          pad += indent;
           spec.failedExpectations.forEach(function (fe) {
             results.push(pad + 'message: ' + fe.message);
           });
-          pad=pad.substr(2);
+          pad = pad.substr(2);
         }
       });
       pad = pad.substr(2);
@@ -169,6 +234,7 @@ function Reporter(options) {
 
   // for console output
   var _pad;
+
   function log(str, indent) {
     _pad = _pad || '';
     if (indent == -1) {
